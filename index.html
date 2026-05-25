@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>เกมทายตัวโน้ตกุญแจซอล (Real-time Blind Tuner Edition)</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script>
+    const firebaseConfig = { databaseURL: "https://leaderboard-64e6e-default-rtdb.asia-southeast1.firebasedatabase.app/" };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+</script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Prompt:wght=300;400;600&display=swap');
 
@@ -178,7 +185,10 @@
                     <option value="D">D Major Scale</option>
                 </select>
             </div>
-
+<div style="margin-bottom: 15px;">
+    <input type="text" id="player-name" placeholder="ใส่ชื่อเล่นของคุณ (เพื่อจัดอันดับ)" 
+           style="padding: 10px; width: 80%; border-radius: 6px; border: 1px solid #ccc;">
+</div>
             <p style="color: #4a5568; font-size: 14px; text-align: left; background: #f7fafc; padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px dashed #cbd5e0;">
                 <strong>กติกาการเล่น:</strong><br>
                 1. โน้ตจะสุ่มขึ้นมาตามคีย์ที่เลือก<br>
@@ -234,7 +244,9 @@
                 <div>ทายถูกต้องทั้งหมด: <span class="highlight" id="summary-score">0 / 20</span> ข้อ</div>
                 <div>เวลารวมที่ใช้ไป: <span class="highlight" id="summary-time">0 นาที 0 วินาที</span></div>
             </div>
-
+<div id="leaderboard-display" style="background: #f8f9fa; padding: 10px; border-radius: 8px; margin: 15px 0;">
+    กำลังโหลดอันดับ...
+</div>
             <button class="btn-action" onclick="startGameRound()">เล่นใหม่อีกครั้ง</button>
             <br>
             <button class="btn-action btn-quit" onclick="quitToMenu()">กลับหน้าหลัก</button>
@@ -601,6 +613,8 @@
 
             document.getElementById('summary-scale-info').innerText = `บันไดเสียงที่ทดสอบ: ${selectedScale} Major Scale`;
             document.getElementById('summary-score').innerText = `${gameScore} / 20`;
+saveScoreToLeaderboard(gameScore, totalDurationSeconds);
+showLeaderboard();
             document.getElementById('summary-time').innerText = `${displayMinutes} นาที ${displaySeconds} วินาที`;
         }
 
@@ -613,6 +627,58 @@
             uiSummaryScreen.style.display = 'none';
             uiStartScreen.style.display = 'block';
         }
+// --- ส่วนเสริม: Leaderboard ---
+function saveScoreToLeaderboard(score, timeSeconds) {
+    const name = document.getElementById('player-name').value || "Guest";
+    const week = getWeekNumber(new Date());
+    
+    // บันทึกเป็น Object
+    db.ref('leaderboard/' + week + '/' + name).set({
+        score: score,
+        time: timeSeconds
+    }).then(() => {
+        showLeaderboard();
+    });
+}
+
+function showLeaderboard() {
+    const week = getWeekNumber(new Date());
+    db.ref('leaderboard/' + week).once('value', (snapshot) => {
+        let scores = [];
+        
+        snapshot.forEach((child) => {
+            scores.push({ 
+                name: child.key, 
+                score: child.val().score, 
+                time: child.val().time 
+            });
+        });
+
+        // ตรรกะการเรียงลำดับ:
+        scores.sort((a, b) => {
+            if (b.score !== a.score) {
+                return b.score - a.score; // คะแนนมาก่อน (มากไปน้อย)
+            }
+            return a.time - b.time; // ถ้าคะแนนเท่ากัน เอาเวลามาเทียบ (น้อยไปมาก)
+        });
+
+        // แสดงผล
+        let html = "<h4>🏆 อันดับประจำสัปดาห์</h4><ul>";
+        scores.slice(0, 5).forEach((item) => {
+            html += `<li>${item.name}: ${item.score} คะแนน (${item.time} วินาที)</li>`;
+        });
+        html += "</ul>";
+        
+        document.getElementById('leaderboard-display').innerHTML = html;
+    });
+}
+
+function getWeekNumber(d) {
+    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+    var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+}
     </script>
 </body>
 </html>
