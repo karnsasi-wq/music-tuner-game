@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เกมทายตัวโน้ตกุญแจซอล (Real-time Blind Tuner Edition)</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Prompt:wght=300;400;600&display=swap');
+
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #f0f4f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .game-container {
+            background-color: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 25px;
+            max-width: 550px;
+            width: 90%;
+            text-align: center;
+        }
+
+        h1 { color: #2c3e50; font-size: 24px; margin: 0 0 10px 0; }
+        p.subtitle { color: #7f8c8d; font-size: 15px; margin: 0 0 20px 0; }
+
+        #start-screen { display: block; }
+        #game-screen { display: none; }
+        #summary-screen { display: none; }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .timer-box {
+            background-color: #2d3748;
+            color: #fff;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 16px;
+        }
+        .timer-warning { background-color: #e74c3c; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+
+        /* ตัวเลือกสเกล */
+        .scale-selector-container {
+            text-align: left;
+            margin-bottom: 20px;
+            background-color: #edf2f7;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+        }
+        .scale-selector-container label {
+            display: block;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+        .scale-select {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: 2px solid #cbd5e0;
+            font-family: 'Prompt', sans-serif;
+            font-size: 16px;
+            color: #2d3748;
+            background-color: white;
+            cursor: pointer;
+        }
+
+        /* ส่วนแสดงบรรทัด 5 เส้น */
+        .staff-box {
+            background-color: #ffffff;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 10px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .staff-box svg { width: 100%; max-width: 400px; height: auto; }
+
+        /* กล่องมอนิเตอร์ความถี่ไมค์สด */
+        .live-freq-badge {
+            background-color: #2d3748;
+            color: #63b3ed;
+            font-family: monospace;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 6px 20px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-bottom: 12px;
+            border: 1px solid #4a5568;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* ส่วนจูนเนอร์สไตล์แอป (Dark Theme) */
+        .tuner-app-container {
+            background-color: #1a202c;
+            border-radius: 14px;
+            padding: 15px;
+            position: relative;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.6);
+        }
+
+        .feedback {
+            font-size: 16px;
+            font-weight: bold;
+            color: #a0aec0;
+            margin: 15px 0 5px 0;
+            min-height: 24px;
+        }
+        .correct { color: #2ecc71 !important; }
+        .incorrect { color: #e74c3c !important; }
+
+        .btn-action {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-family: 'Prompt', sans-serif;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .btn-action:hover { background-color: #2980b9; transform: translateY(-1px); }
+        .btn-start { background-color: #27ae60; font-size: 20px; padding: 15px 40px; width: 100%; }
+        .btn-start:hover { background-color: #219a52; }
+        .btn-quit { background-color: #718096; font-size: 14px; padding: 8px 20px; margin-top: 15px; }
+
+        .summary-stats {
+            background-color: #f7fafc;
+            border: 2px dashed #cbd5e0;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-size: 18px;
+            line-height: 2;
+        }
+        .highlight { color: #dd6b20; font-size: 24px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        
+        <div id="start-screen">
+            <div style="font-size: 60px; margin-bottom: 10px;">🎼</div>
+            <h1>เกมทายโน้ตกุญแจซอล</h1>
+            <p class="subtitle"> </p>
+            
+            <div class="scale-selector-container">
+                <label for="scale-select">🎯 เลือกบันไดเสียงที่ต้องการฝึกฝน:</label>
+                <select id="scale-select" class="scale-select">
+                    <option value="C">C Major Scale</option>
+                    <option value="G">G Major Scale</option>
+                    <option value="D">D Major Scale</option>
+                </select>
+            </div>
+
+            <p style="color: #4a5568; font-size: 14px; text-align: left; background: #f7fafc; padding: 15px; border-radius: 8px; margin-bottom: 25px; border: 1px dashed #cbd5e0;">
+                <strong>กติกาการเล่น:</strong><br>
+                1. โน้ตจะสุ่มขึ้นมาตามคีย์ที่เลือก<br>
+                2. มี 20 ข้อ<br>
+                3. มีเวลาข้อละ 10 วินาที<br>
+                4. ยอมรับความเพี้ยนโน้ตเป้าหมาย ±15 cents
+            </p>
+            <button class="btn-action btn-start" onclick="startMicAndGame()">เปิดไมค์ & เริ่มเล่นเกม</button>
+        </div>
+
+        <div id="game-screen">
+            <div class="status-bar">
+                <span id="question-counter">ข้อที่: 1/20</span>
+                <div class="timer-box" id="timer-display">⏱ 10s</div>
+                <span id="score-display">คะแนน: 0</span>
+            </div>
+
+            <div class="staff-box" id="staff-container"></div>
+            
+            <div class="live-freq-badge">เสียงของคุณ: <span id="live-hz-text">--</span> Hz</div>
+
+            <div class="tuner-app-container">
+                <svg id="tuner-svg" viewBox="0 0 400 260" xmlns="http://www.w3.org/2000/svg">
+                    <text x="200" y="35" text-anchor="middle" font-size="15" font-weight="bold" fill="#718096" letter-spacing="2">CHROMATIC TUNER</text>
+
+                    <path d="M 96.4 203.5 A 120 120 0 0 1 303.6 203.5" fill="none" stroke="#2d3748" stroke-width="3"/>
+                    
+                    <path d="M 179.1 81.6 A 120 120 0 0 1 220.9 81.6" fill="none" stroke="#2ecc71" stroke-width="8"/>
+                    
+                    <g id="scale-ticks"></g>
+
+                    <rect x="275" y="115" width="75" height="40" rx="6" fill="#2d3748" stroke="#4a5568" stroke-width="1"/>
+                    <text x="312.5" y="140" id="cents-deviation-text" text-anchor="middle" dominant-baseline="middle" font-size="16" font-weight="bold" fill="#63b3ed">--¢</text>
+
+                    <text x="200" y="235" id="large-note-letter" text-anchor="middle" font-size="85" font-weight="bold" fill="#ffffff">--</text>
+
+                    <line id="needle" x1="200" y1="200" x2="200" y2="90" stroke="#e74c3c" stroke-width="4" stroke-linecap="round" transform="rotate(0, 200, 200)"/>
+                    <circle cx="200" cy="200" r="10" fill="#e74c3c"/>
+                    <line x1="185" y1="200" x2="215" y2="200" stroke="#2ecc71" stroke-width="4" stroke-linecap="round"/>
+                </svg>
+            </div>
+
+            <p class="feedback" id="feedback-display">กำลังรอเสียงดนตรี...</p>
+            <button class="btn-action btn-quit" onclick="quitToMenu()">ออกไปหน้าแรก</button>
+        </div>
+
+        <div id="summary-screen">
+            <div style="font-size: 60px; margin-bottom: 10px;">🏆</div>
+            <h1>การทดสอบสิ้นสุด!</h1>
+            <p class="subtitle" id="summary-scale-info">บันไดเสียงที่ทดสอบ: C Major</p>
+            
+            <div class="summary-stats">
+                <div>ทายถูกต้องทั้งหมด: <span class="highlight" id="summary-score">0 / 20</span> ข้อ</div>
+                <div>เวลารวมที่ใช้ไป: <span class="highlight" id="summary-time">0 นาที 0 วินาที</span></div>
+            </div>
+
+            <button class="btn-action" onclick="startGameRound()">เล่นใหม่อีกครั้ง</button>
+            <br>
+            <button class="btn-action btn-quit" onclick="quitToMenu()">กลับหน้าหลัก</button>
+        </div>
+
+    </div>
+
+    <script>
+        // คลังโน้ตพื้นฐาน (Natural Notes)
+        const baseNotesDatabase = [
+            { id: "G3", letter: "G", freq: 196.00, y: 105, ledgers: [90, 100] },
+            { id: "A3", letter: "A", freq: 220.00, y: 100, ledgers: [90, 100] },
+            { id: "B3", letter: "B", freq: 246.94, y: 95,  ledgers: [90] },
+            { id: "C4", letter: "C", freq: 261.63, y: 90,  ledgers: [90] },
+            { id: "D4", letter: "D", freq: 293.66, y: 85,  ledgers: [] },
+            { id: "E4", letter: "E", freq: 329.63, y: 80,  ledgers: [] },
+            { id: "F4", letter: "F", freq: 349.23, y: 75,  ledgers: [] },
+            { id: "G4", letter: "G", freq: 392.00, y: 70,  ledgers: [] },
+            { id: "A4", letter: "A", freq: 440.00, y: 65,  ledgers: [] },
+            { id: "B4", letter: "B", freq: 493.88, y: 60,  ledgers: [] },
+            { id: "C5", letter: "C", freq: 523.25, y: 55,  ledgers: [] },
+            { id: "D5", letter: "D", freq: 587.33, y: 50,  ledgers: [] },
+            { id: "E5", letter: "E", freq: 659.25, y: 45,  ledgers: [] },
+            { id: "F5", letter: "F", freq: 698.46, y: 40,  ledgers: [] },
+            { id: "G5", letter: "G", freq: 783.99, y: 35,  ledgers: [] },
+            { id: "A5", letter: "A", freq: 880.00, y: 30,  ledgers: [30] },
+            { id: "B5", letter: "B", freq: 987.77, y: 25,  ledgers: [30] },
+            { id: "C6", letter: "C", freq: 1046.50, y: 20, ledgers: [30, 20] },
+            { id: "D6", letter: "D", freq: 1174.66, y: 15, ledgers: [30, 20] }
+        ];
+
+        let activeNotesPool = []; 
+        let selectedScale = "C";
+        let gameScore = 0;
+        let currentQuestionIndex = 0;
+        let currentTargetNote = null;
+        let isWaitingState = false;
+        let gameTimerSeconds = 10;
+        let timerCountdownId;
+        let totalRoundStartTime;
+
+        let browserAudioContext = null;
+        let audioAnalyserNode = null;
+        let audioDataBuffer = null;
+
+        const uiStartScreen = document.getElementById('start-screen');
+        const uiGameScreen = document.getElementById('game-screen');
+        const uiSummaryScreen = document.getElementById('summary-screen');
+        const uiQuestionCounter = document.getElementById('question-counter');
+        const uiScoreDisplay = document.getElementById('score-display');
+        const uiTimerDisplay = document.getElementById('timer-display');
+        const uiFeedbackText = document.getElementById('feedback-display');
+        const uiStaffContainer = document.getElementById('staff-container');
+        const uiLiveHzText = document.getElementById('live-hz-text');
+        
+        const svgNeedleElement = document.getElementById('needle');
+        const svgCentsBoxText = document.getElementById('cents-deviation-text');
+        const svgLargeLetterText = document.getElementById('large-note-letter');
+
+        buildTunerScaleTicks();
+
+        function buildTunerScaleTicks() {
+            const container = document.getElementById('scale-ticks');
+            const cx = 200, cy = 200, r = 120;
+            let combinedHtml = '';
+
+            for (let cents = -50; cents <= 50; cents += 2) {
+                const degreesAngle = (cents / 50) * 60;
+                const radiansAngle = (degreesAngle * Math.PI) / 180;
+                const sin = Math.sin(radiansAngle);
+                const cos = Math.cos(radiansAngle);
+
+                const isMajorTick = cents % 10 === 0;
+                const tickLength = isMajorTick ? 12 : 6;
+                const strokeColor = Math.abs(cents) <= 10 ? '#2ecc71' : '#4a5568';
+                const strokeWidth = isMajorTick ? 2 : 1;
+
+                const x1 = cx + (r - tickLength) * sin;
+                const y1 = cy - (r - tickLength) * cos;
+                const x2 = cx + r * sin;
+                const y2 = cy - r * cos;
+
+                combinedHtml += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${strokeColor}" stroke-width="${strokeWidth}" />`;
+
+                if (isMajorTick) {
+                    const textX = cx + (r - 24) * sin;
+                    const textY = cy - (r - 24) * cos;
+                    combinedHtml += `<text x="${textX}" y="${textY}" text-anchor="middle" dominant-baseline="middle" font-size="10" font-weight="bold" fill="#718096">${cents > 0 ? '+' + cents : cents}</text>`;
+                }
+            }
+            container.innerHTML = combinedHtml;
+        }
+
+        function prepareNotesForScale(scale) {
+            activeNotesPool = JSON.parse(JSON.stringify(baseNotesDatabase));
+            
+            activeNotesPool.forEach(note => {
+                if (scale === "G" || scale === "D") {
+                    if (note.id.startsWith("F")) {
+                        note.letter = "F#";
+                        if (note.id === "F4") note.freq = 369.99;
+                        if (note.id === "F5") note.freq = 739.99;
+                        note.id = note.id.replace("F", "F#");
+                    }
+                }
+                if (scale === "D") {
+                    if (note.id.startsWith("C")) {
+                        note.letter = "C#";
+                        if (note.id === "C4") note.freq = 277.18;
+                        if (note.id === "C5") note.freq = 554.37;
+                        if (note.id === "C6") note.freq = 1108.73;
+                        note.id = note.id.replace("C", "C#");
+                    }
+                }
+            });
+        }
+
+        // ฟังก์ชันคำนวณหาชื่อโน้ตสากลจากคลื่นความถี่จริง (Real-time Real Note Mapping)
+        function getNoteLetterFromFreq(freq) {
+            if (!freq || freq <= 0) return "--";
+            const chromaticNotes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+            // คำนวณหาค่า MIDI note number จากสูตรดนตรีสากล 12 * log2(f/440) + 69
+            const midiNote = Math.round(12 * Math.log2(freq / 440) + 69);
+            const noteIndex = (midiNote % 12 + 12) % 12;
+            return chromaticNotes[noteIndex];
+        }
+
+        async function startMicAndGame() {
+            try {
+                if (!browserAudioContext) {
+                    browserAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    const sourceNode = browserAudioContext.createMediaStreamSource(audioStream);
+                    
+                    audioAnalyserNode = browserAudioContext.createAnalyser();
+                    audioAnalyserNode.fftSize = 2048;
+                    sourceNode.connect(audioAnalyserNode);
+                    
+                    audioDataBuffer = new Float32Array(audioAnalyserNode.fftSize);
+                }
+                startGameRound();
+            } catch (err) {
+                console.error(err);
+                alert("ไม่สามารถเข้าถึงไมโครโฟนได้ โปรดตรวจสอบสิทธิ์การอนุญาตใช้ไมค์บนเบราว์เซอร์ของคุณ");
+            }
+        }
+
+        function startGameRound() {
+            gameScore = 0;
+            currentQuestionIndex = 0;
+            currentTargetNote = null;
+            uiScoreDisplay.innerText = "คะแนน: 0";
+            
+            selectedScale = document.getElementById('scale-select').value;
+            prepareNotesForScale(selectedScale);
+            
+            if (browserAudioContext) browserAudioContext.resume();
+            
+            uiStartScreen.style.display = 'none';
+            uiSummaryScreen.style.display = 'none';
+            uiGameScreen.style.display = 'block';
+            
+            totalRoundStartTime = Date.now();
+            generateNextQuestion();
+        }
+
+        function generateNextQuestion() {
+            if (currentQuestionIndex >= 20) {
+                concludeGameRound();
+                return;
+            }
+
+            isWaitingState = false;
+            currentQuestionIndex++;
+            
+            let randomPickedNote;
+            do {
+                randomPickedNote = activeNotesPool[Math.floor(Math.random() * activeNotesPool.length)];
+            } while (currentTargetNote && randomPickedNote.id === currentTargetNote.id);
+            currentTargetNote = randomPickedNote;
+            
+            uiQuestionCounter.innerText = `ข้อที่: ${currentQuestionIndex}/20`;
+            uiFeedbackText.innerHTML = "โน้ตบนบรรทัด 5 เส้นนี้คือตัวอะไร?<br>เล่นเครื่องดนตรีให้ตรงคีย์เลย!";
+            uiFeedbackText.className = "feedback";
+            uiLiveHzText.innerText = "--";
+            
+            svgNeedleElement.setAttribute('transform', 'rotate(0, 200, 200)');
+            svgCentsBoxText.textContent = '--¢';
+            svgCentsBoxText.style.fill = '#63b3ed';
+            svgLargeLetterText.textContent = '--';
+
+            drawMusicStaff(currentTargetNote);
+            startQuestionTimer();
+            
+            requestAnimationFrame(processAudioPitchLoop);
+        }
+
+        function drawMusicStaff(note) {
+            let ledgerLinesHtml = '';
+            note.ledgers.forEach(ledgerY => {
+                ledgerLinesHtml += `<line x1="120" y1="${ledgerY}" x2="180" y2="${ledgerY}" stroke="black" stroke-width="2"/>`;
+            });
+
+            let keySignatureHtml = '';
+            if (selectedScale === "G") {
+                keySignatureHtml = `<text x="62" y="40" font-size="24" font-family="'Times New Roman', serif" font-weight="bold" fill="black" dominant-baseline="middle" text-anchor="middle">♯</text>`;
+            } else if (selectedScale === "D") {
+                keySignatureHtml = `
+                    <text x="62" y="40" font-size="24" font-family="'Times New Roman', serif" font-weight="bold" fill="black" dominant-baseline="middle" text-anchor="middle">♯</text>
+                    <text x="74" y="55" font-size="24" font-family="'Times New Roman', serif" font-weight="bold" fill="black" dominant-baseline="middle" text-anchor="middle">♯</text>
+                `;
+            }
+
+            uiStaffContainer.innerHTML = `
+                <svg viewBox="0 0 250 130">
+                    <text x="20" y="80" font-size="65" font-family="'Times New Roman', serif" fill="black">&#119070;</text>
+                    ${keySignatureHtml}
+                    <line x1="10" y1="40" x2="240" y2="40" stroke="black" stroke-width="2"/>
+                    <line x1="10" y1="50" x2="240" y2="50" stroke="black" stroke-width="2"/>
+                    <line x1="10" y1="60" x2="240" y2="60" stroke="black" stroke-width="2"/>
+                    <line x1="10" y1="70" x2="240" y2="70" stroke="black" stroke-width="2"/>
+                    <line x1="10" y1="80" x2="240" y2="80" stroke="black" stroke-width="2"/>
+                    ${ledgerLinesHtml}
+                    <ellipse cx="160" cy="${note.y}" rx="8" ry="6" fill="black" transform="rotate(-15 160 ${note.y})" />
+                </svg>
+            `;
+        }
+
+        function startQuestionTimer() {
+            gameTimerSeconds = 10;
+            uiTimerDisplay.innerText = `⏱ ${gameTimerSeconds}s`;
+            uiTimerDisplay.classList.remove('timer-warning');
+            clearInterval(timerCountdownId);
+            
+            timerCountdownId = setInterval(() => {
+                gameTimerSeconds--;
+                uiTimerDisplay.innerText = `⏱ ${gameTimerSeconds}s`;
+                
+                if (gameTimerSeconds <= 3) uiTimerDisplay.classList.add('timer-warning');
+                
+                if (gameTimerSeconds <= 0) {
+                    isWaitingState = true;
+                    clearInterval(timerCountdownId);
+                    
+                    uiFeedbackText.innerHTML = `⏰ หมดเวลา! เฉลยมันคือโน้ตตัว <b>${currentTargetNote.id}</b>`;
+                    uiFeedbackText.className = "feedback incorrect";
+                    uiTimerDisplay.innerText = "หมดเวลา";
+                    uiLiveHzText.innerText = "--";
+                    
+                    setTimeout(generateNextQuestion, 2500);
+                }
+            }, 1000);
+        }
+
+        function processAudioPitchLoop() {
+            if (!audioAnalyserNode || isWaitingState) return;
+            
+            audioAnalyserNode.getFloatTimeDomainData(audioDataBuffer);
+            const detectedFrequency = calculateOptimizedPitch(audioDataBuffer, browserAudioContext.sampleRate);
+            
+            if (detectedFrequency > 0 && currentTargetNote) {
+                uiLiveHzText.innerText = detectedFrequency.toFixed(1);
+                evaluateTunerFrequency(detectedFrequency);
+            } else {
+                uiLiveHzText.innerText = "--";
+                svgNeedleElement.setAttribute('transform', 'rotate(0, 200, 200)');
+                svgCentsBoxText.textContent = '--¢';
+                svgCentsBoxText.style.fill = '#63b3ed';
+                svgLargeLetterText.textContent = '--';
+            }
+            
+            requestAnimationFrame(processAudioPitchLoop);
+        }
+
+        function calculateOptimizedPitch(buffer, sampleRate) {
+            const size = buffer.length;
+            let totalVolumeRms = 0;
+            for (let i = 0; i < size; i++) totalVolumeRms += buffer[i] * buffer[i];
+            totalVolumeRms = Math.sqrt(totalVolumeRms / size);
+            
+            if (totalVolumeRms < 0.01) return -1;
+
+            const maxSearchWindow = Math.min(size, 800);
+            const rArray = new Float32Array(maxSearchWindow);
+            
+            for (let i = 0; i < maxSearchWindow; i++) {
+                for (let j = 0; j < size - i; j++) {
+                    rArray[i] += buffer[j] * buffer[j + i];
+                }
+            }
+
+            let firstSlopeIndex = 0;
+            while (firstSlopeIndex < maxSearchWindow - 1 && rArray[firstSlopeIndex] > rArray[firstSlopeIndex + 1]) {
+                firstSlopeIndex++;
+            }
+            if (firstSlopeIndex >= maxSearchWindow - 1) return -1;
+
+            let highestPeakValue = -1;
+            let highestPeakPosition = -1;
+            for (let i = firstSlopeIndex; i < maxSearchWindow; i++) {
+                if (rArray[i] > highestPeakValue) {
+                    highestPeakValue = rArray[i];
+                    highestPeakPosition = i;
+                }
+            }
+
+            let exactPeriod = highestPeakPosition;
+            if (exactPeriod > 0 && exactPeriod < maxSearchWindow - 1) {
+                let leftVal = rArray[exactPeriod - 1];
+                let centerVal = rArray[exactPeriod];
+                let rightVal = rArray[exactPeriod + 1];
+                let arcDivider = (leftVal + rightVal - 2 * centerVal) / 2;
+                let arcPeakOffset = (rightVal - leftVal) / 2;
+                if (arcDivider !== 0) exactPeriod = exactPeriod - arcPeakOffset / (2 * arcDivider);
+            }
+
+            if (exactPeriod <= 0) return -1;
+            return sampleRate / exactPeriod;
+        }
+
+        function evaluateTunerFrequency(freq) {
+            const targetFreq = currentTargetNote.freq;
+            let centsOffset = 1200 * Math.log2(freq / targetFreq);
+            
+            let clampedCents = Math.min(Math.max(centsOffset, -50), 50);
+            const calculatedDegrees = (clampedCents / 50) * 60;
+            
+            svgNeedleElement.setAttribute('transform', `rotate(${calculatedDegrees}, 200, 200)`);
+            
+            const roundedCents = Math.round(centsOffset);
+            svgCentsBoxText.textContent = (roundedCents > 0 ? '+' : '') + roundedCents + '¢';
+            
+            // อัปเดตตัวอักษรยักษ์ให้แสดงตาม "เสียงจริงที่ได้ยินจากไมค์"
+            svgLargeLetterText.textContent = getNoteLetterFromFreq(freq);
+
+            if (Math.abs(centsOffset) <= 15) {
+                isWaitingState = true;
+                clearInterval(timerCountdownId);
+
+                gameScore++;
+                svgCentsBoxText.style.fill = '#2ecc71';
+                uiFeedbackText.innerHTML = `✨ ถูกต้อง! เสียงตรงโน้ตเป้าหมายชัดเจน 🎉`;
+                uiFeedbackText.className = "feedback correct";
+                uiScoreDisplay.innerText = `คะแนน: ${gameScore}`;
+                
+                svgNeedleElement.setAttribute('transform', 'rotate(0, 200, 200)');
+
+                setTimeout(generateNextQuestion, 1800);
+            } else {
+                svgCentsBoxText.style.fill = '#e74c3c';
+                uiFeedbackText.innerHTML = centsOffset > 0 ? "❌ เสียงของคุณสูงไปนิด... ปรับลงหน่อย!" : "❌ เสียงของคุณต่ำไปนิด... ดันเสียงขึ้นหน่อย!";
+                uiFeedbackText.className = "feedback incorrect";
+            }
+        }
+
+        function concludeGameRound() {
+            clearInterval(timerCountdownId);
+            const totalDurationSeconds = Math.floor((Date.now() - totalRoundStartTime) / 1000);
+            const displayMinutes = Math.floor(totalDurationSeconds / 60);
+            const displaySeconds = totalDurationSeconds % 60;
+
+            uiGameScreen.style.display = 'none';
+            uiSummaryScreen.style.display = 'block';
+
+            document.getElementById('summary-scale-info').innerText = `บันไดเสียงที่ทดสอบ: ${selectedScale} Major Scale`;
+            document.getElementById('summary-score').innerText = `${gameScore} / 20`;
+            document.getElementById('summary-time').innerText = `${displayMinutes} นาที ${displaySeconds} วินาที`;
+        }
+
+        function quitToMenu() {
+            clearInterval(timerCountdownId);
+            isWaitingState = true;
+            if (browserAudioContext) browserAudioContext.suspend();
+            
+            uiGameScreen.style.display = 'none';
+            uiSummaryScreen.style.display = 'none';
+            uiStartScreen.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
